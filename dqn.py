@@ -27,9 +27,9 @@ EPSILON_DECAY=int(1e6)
 NUM_ENVS = 4
 TARGET_UPDATE_FREQ = 10000 // NUM_ENVS
 LR = 5e-5
-SAVE_PATH = './atari_model_SCALED_lr{0}.pack'.format(LR)
+SAVE_PATH = './breakout_model_SCALED_lr{0}.pack'.format(LR)
 SAVE_INTERVAL = 10000
-LOG_DIR = './logs/atari_vannila_SCALED_lr' + str(LR)
+LOG_DIR = './logs/breakout_vannila_SCALED_lr' + str(LR)
 LOG_INTERVAL = 1000
 
 def nature_cnn(observation_space, depths=(32, 64, 64), final_layer=512):
@@ -160,7 +160,6 @@ target_net.load_state_dict(online_net.state_dict())
 optimizer = torch.optim.Adam(online_net.parameters(), lr=LR)
 
 # Initialize replay buffer
-print('ok')
 obses = env.reset()
 for _ in range(MIN_REPLAY_SIZE):
     actions = [env.action_space.sample() for _ in range(NUM_ENVS)]
