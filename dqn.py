@@ -24,12 +24,12 @@ MIN_REPLAY_SIZE=50000
 EPSILON_START=1.0
 EPSILON_END=0.1
 EPSILON_DECAY=int(1e6)
-TARGET_UPDATE_FREQ = 10000
 NUM_ENVS = 4
-LR = 2.5e-4
-SAVE_PATH = './ATARI_MODEL.pack'
+TARGET_UPDATE_FREQ = 10000 // NUM_ENVS
+LR = 5e-5
+SAVE_PATH = './atari_model_SCALED_lr{0}.pack'.format(LR)
 SAVE_INTERVAL = 10000
-LOG_DIR = './logs/atari_vannila'
+LOG_DIR = './logs/atari_vannila_SCALED_lr' + str(LR)
 LOG_INTERVAL = 1000
 
 def nature_cnn(observation_space, depths=(32, 64, 64), final_layer=512):
@@ -135,10 +135,10 @@ class Network(nn.Module):
         self.load_state_dict(params)
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-make_env = lambda: Monitor(make_atari_deepmind('Breakout-v0'), allow_early_resets=True)
+make_env = lambda: Monitor(make_atari_deepmind('BreakoutNoFrameskip-v4', scale_values=True), allow_early_resets=True)
 
 vec_env = DummyVecEnv([make_env for _ in range(NUM_ENVS)])
-#env = SubprocVecEnv([make_env for _ in NUM_ENVS])
+# vec_env = SubprocVecEnv([make_env for _ in range(NUM_ENVS)])
 
 env = BatchedPytorchFrameStack(vec_env, k=4)
 
@@ -160,6 +160,7 @@ target_net.load_state_dict(online_net.state_dict())
 optimizer = torch.optim.Adam(online_net.parameters(), lr=LR)
 
 # Initialize replay buffer
+print('ok')
 obses = env.reset()
 for _ in range(MIN_REPLAY_SIZE):
     actions = [env.action_space.sample() for _ in range(NUM_ENVS)]
