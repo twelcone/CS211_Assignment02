@@ -28,9 +28,9 @@ EPSILON_DECAY=int(1e6)
 NUM_ENVS = 4
 TARGET_UPDATE_FREQ=10000 // NUM_ENVS
 LR = 5e-5
-SAVE_PATH = './breakout_model_double.pack'.format(LR)
+SAVE_PATH = './breakoutv0_model_double.pack'.format(LR)
 SAVE_INTERVAL = 10000
-LOG_DIR = './logs/breakout_double' + str(LR)
+LOG_DIR = './logs/breakoutv0_double' + str(LR)
 LOG_INTERVAL = 1000
 
 def init_weights(m):
@@ -154,7 +154,7 @@ class Network(nn.Module):
 if __name__ == '__main__':
     device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
 
-    make_env = lambda: Monitor(make_atari_deepmind('BreakoutNoFrameskip-v4', scale_values=True), allow_early_resets=True)
+    make_env = lambda: Monitor(make_atari_deepmind('BreakoutN-v0'), allow_early_resets=True)
 
     # vec_env = DummyVecEnv([make_env for _ in range(NUM_ENVS)])
     vec_env = SubprocVecEnv([make_env for _ in range(NUM_ENVS)])

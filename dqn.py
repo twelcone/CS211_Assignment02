@@ -27,9 +27,9 @@ EPSILON_DECAY=int(1e6)
 NUM_ENVS = 4
 TARGET_UPDATE_FREQ = 10000 // NUM_ENVS
 LR = 5e-5
-SAVE_PATH = './breakout_model_SCALED_lr{0}.pack'.format(LR)
+SAVE_PATH = './breakoutv0_model_SCALED_lr{0}.pack'.format(LR)
 SAVE_INTERVAL = 10000
-LOG_DIR = './logs/breakout_vannila_SCALED_lr' + str(LR)
+LOG_DIR = './logs/breakoutv0_vannila_SCALED_lr' + str(LR)
 LOG_INTERVAL = 1000
 
 def nature_cnn(observation_space, depths=(32, 64, 64), final_layer=512):
@@ -135,7 +135,7 @@ class Network(nn.Module):
         self.load_state_dict(params)
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-make_env = lambda: Monitor(make_atari_deepmind('BreakoutNoFrameskip-v4', scale_values=True), allow_early_resets=True)
+make_env = lambda: Monitor(make_atari_deepmind('Breakout-v0'), allow_early_resets=True)
 
 vec_env = DummyVecEnv([make_env for _ in range(NUM_ENVS)])
 # vec_env = SubprocVecEnv([make_env for _ in range(NUM_ENVS)])
