@@ -1,22 +1,8 @@
-import os
-from this import d
-from torch import conv2d, nn, no_grad
-import torch
-import gym
-from collections import deque
-import itertools
-import numpy as np
-import random
-
-from torch.utils.tensorboard import SummaryWriter
-from baselines_wrappers import Monitor
-from pytorch_wrappers import BatchedPytorchFrameStack, PytorchLazyFrames, make_atari_deepmind
-from baselines_wrappers import DummyVecEnv, SubprocVecEnv
-
-import msgpack
-from msgpack_numpy import patch as msgpack_numpy_patch
+from __init__ import *
+from constant import *
 msgpack_numpy_patch()
 
+GAME_NAME = 'MontezumaRevenge-v0'
 GAMMA=0.99
 BATCH_SIZE=32
 BUFFER_SIZE=int(1e6)
@@ -27,9 +13,9 @@ EPSILON_DECAY=int(1e6)
 NUM_ENVS = 4
 TARGET_UPDATE_FREQ = 10000 // NUM_ENVS
 LR = 5e-5
-SAVE_PATH = './breakoutv0_model_SCALED_lr{0}.pack'.format(LR)
+SAVE_PATH = './model/MontezumaRevenge-v0/'
 SAVE_INTERVAL = 10000
-LOG_DIR = './logs/breakoutv0_vannila_SCALED_lr' + str(LR)
+LOG_DIR = './logs/MontezumaRevenge-v0_vannila_SCALED_lr' + str(LR)
 LOG_INTERVAL = 1000
 
 def nature_cnn(observation_space, depths=(32, 64, 64), final_layer=512):
@@ -135,7 +121,7 @@ class Network(nn.Module):
         self.load_state_dict(params)
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-make_env = lambda: Monitor(make_atari_deepmind('Breakout-v0'), allow_early_resets=True)
+make_env = lambda: Monitor(make_atari_deepmind(GAME_NAME), allow_early_resets=True)
 
 vec_env = DummyVecEnv([make_env for _ in range(NUM_ENVS)])
 # vec_env = SubprocVecEnv([make_env for _ in range(NUM_ENVS)])
@@ -226,6 +212,6 @@ for step in itertools.count():
     # Save
     if step % SAVE_INTERVAL == 0 and step !=0:
         print('Saving...')
-        online_net.save(SAVE_PATH)
+        online_net.save(SAVE_PATH + '[' + str(step) + '] ' 'MontezumaRevenge-v0_model_SCALED_lr{0}.pack'.format(LR))
 
 

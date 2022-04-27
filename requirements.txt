@@ -1,0 +1,9 @@
+ale-py
+autorom
+gym
+gym[all]
+pyglet
+matplotlib
+cmake
+gym[atari] 
+gym[accept-rom-license]
