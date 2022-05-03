@@ -1,15 +1,8 @@
-import os, random
-import numpy as np
-import torch
-from torch import nn
-import itertools
-from baselines_wrappers import DummyVecEnv
-from pytorch_wrappers import make_atari_deepmind, BatchedPytorchFrameStack, PytorchLazyFrames
-import time
-
-import msgpack
-from msgpack_numpy import patch as msgpack_numpy_patch
+from __init__ import *
 msgpack_numpy_patch()
+
+GAME_NAME = 'Breakout-v0'
+LOAD_DIR = '/home/twel/CS211_Assignment02/model/[Best model DoubleDQN] [4340000] Breakout-v0.pack'
 
 def nature_cnn(observation_space, depths=(32, 64, 64), final_layer=512):
     n_input_channels = observation_space.shape[0]
@@ -73,7 +66,7 @@ class Network(nn.Module):
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print('device:', device)
 
-make_env = lambda: make_atari_deepmind('Breakout-v0', render=True)
+make_env = lambda: make_atari_deepmind(GAME_NAME, render=True)
 
 vec_env = DummyVecEnv([make_env for _ in range(1)])
 
@@ -82,7 +75,7 @@ env = BatchedPytorchFrameStack(vec_env, k=4)
 net = Network(env, device)
 net = net.to(device)
 
-net.load('./ATARI_MODEL.pack')
+net.load(LOAD_DIR)
 
 obs = env.reset()
 beginning_episode = True

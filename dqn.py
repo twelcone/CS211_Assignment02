@@ -212,6 +212,6 @@ for step in itertools.count():
     # Save
     if step % SAVE_INTERVAL == 0 and step !=0:
         print('Saving...')
-        online_net.save(SAVE_PATH + '[' + str(step) + '] ' 'MontezumaRevenge-v0_model_SCALED_lr{0}.pack'.format(LR))
+        online_net.save(SAVE_PATH + '[' + str(step) + '] ' + str(GAME_NAME) + '_model_SCALED_lr{0}.pack'.format(LR))
 
 
