@@ -1,8 +1,8 @@
 from __init__ import *
 msgpack_numpy_patch()
 
-GAME_NAME = 'Breakout-v0'
-LOAD_DIR = '/home/twel/CS211_Assignment02/model/[Best model DoubleDQN] [4340000] Breakout-v0.pack'
+GAME_NAME = 'MontezumaRevenge-v0'
+LOAD_DIR = '/home/twel/CS211_Assignment02/model/[Best model DuelingDQN] [4330000] MontezumaRevenge-v0.pack'
 
 def nature_cnn(observation_space, depths=(32, 64, 64), final_layer=512):
     n_input_channels = observation_space.shape[0]
@@ -64,7 +64,7 @@ class Network(nn.Module):
         self.load_state_dict(params)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print('device:', device)
+# print('device:', device)
 
 make_env = lambda: make_atari_deepmind(GAME_NAME, render=True)
 

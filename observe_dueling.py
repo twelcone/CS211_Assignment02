@@ -18,8 +18,8 @@ import msgpack
 from msgpack_numpy import patch as msgpack_numpy_patch
 msgpack_numpy_patch()
 
-GAME_NAME = 'Breakout-v0'
-LOAD_DIR = '/home/twel/CS211_Assignment02/model/[Best model DoubleDQN] [4340000] Breakout-v0.pack'
+GAME_NAME = 'MontezumaRevenge-v0'
+LOAD_DIR = '/home/twel/CS211_Assignment02/model/[Best model DuelingDQN] [4330000] MontezumaRevenge-v0.pack'
 
 GAMMA=0.99
 BATCH_SIZE=32
@@ -35,6 +35,9 @@ SAVE_PATH = './breakoutv0_model_double.pack'.format(LR)
 SAVE_INTERVAL = 10000
 LOG_DIR = './logs/breakoutv0_double' + str(LR)
 LOG_INTERVAL = 1000
+device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
+DEVICE = device
+
 
 def init_weights(m):
     if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
@@ -61,39 +64,81 @@ def nature_cnn(observation_space, depths=(32, 64, 64), final_layer=512):
 
     return out
 
-class Network(nn.Module):
-    def __init__(self, env, device, double=True):
+class DuelingDQN(nn.Module):
+    def __init__(self, env):
         super().__init__()
-
-        self.num_actions = env.action_space.n
         self.device = device
-        self.double = double
+        self.num_actions = env.action_space.n
+        self.input_dim = env.observation_space.shape
+        self.output_dim = self.num_actions
+        
+        
+        self.net = nn.Sequential(
+            nn.Conv2d(env.observation_space.shape[0], 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU()
+        )
+        self.fc_input_dim = self.feature_size()
+        
+        self.value_stream = nn.Sequential(
+            nn.Linear(self.fc_input_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, 1)
+        )
 
-        conv_net = nature_cnn(env.observation_space)
+        self.advantage_stream = nn.Sequential(
+            nn.Linear(self.fc_input_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, self.output_dim)
+        )
 
-        self.net = nn.Sequential(conv_net, nn.Linear(512, self.num_actions))
+    def forward(self, state):
+        features = self.net(state)
+        features = features.view(features.size(0), -1)
+        # features = torch.transpose(features, 0, 1)
+        values = self.value_stream(features)
+        advantages = self.advantage_stream(features)
+        qvals = values + (advantages - advantages.mean())
+        
+        return qvals
 
-    def forward(self, x):
-        return self.net(x)
+    def feature_size(self):
+        return self.net(torch.autograd.Variable(torch.zeros(1, *self.input_dim))).view(1, -1).size(1)
 
-    def act(self, obses, epsilon):
-        obses_t = torch.as_tensor(obses, dtype=torch.float32, device=self.device)
-        q_values = self(obses_t)
+    def act(self, observation, epsilon):
+        """
+        Function to determine which action our agent would take
+        Args:
+        observation
+        epsilon
+
+        Returns:
+        actions -- set of actions to take
+        """
+        observation_tensor = torch.as_tensor(observation, dtype=torch.float32, device=self.device)
+        q_values = self(observation_tensor)
 
         max_q_indices = torch.argmax(q_values, dim=1)
         actions = max_q_indices.detach().tolist()
 
+        # Epsilon greedy policy
         for i in range(len(actions)):
-            rnd_sample = random.random()
-            if rnd_sample <= epsilon:
+            random_sample = random.random()
+            if random_sample <= epsilon:
                 actions[i] = random.randint(0, self.num_actions - 1)
 
         return actions
 
     def compute_loss(self, transitions, target_net):
+        """
+        Function to get loss from online network
+        """
         obses = [t[0] for t in transitions]
         actions = np.asarray([t[1] for t in transitions])
-        rews = np.asarray([t[2] for t in transitions])
+        rewards = np.asarray([t[2] for t in transitions])
         dones = np.asarray([t[3] for t in transitions])
         new_obses = [t[4] for t in transitions]
 
@@ -104,36 +149,32 @@ class Network(nn.Module):
             obses = np.asarray(obses)
             new_obses = np.asarray(new_obses)
 
-        obses_t = torch.as_tensor(obses, dtype=torch.float32, device=self.device)
-        actions_t = torch.as_tensor(actions, dtype=torch.int64, device=self.device).unsqueeze(-1)
-        rews_t = torch.as_tensor(rews, dtype=torch.float32, device=self.device).unsqueeze(-1)
-        dones_t = torch.as_tensor(dones, dtype=torch.float32, device=self.device).unsqueeze(-1)
-        new_obses_t = torch.as_tensor(new_obses, dtype=torch.float32, device=self.device)
+        obs_tensor = torch.as_tensor(obses, dtype=torch.float32, device=DEVICE)
+        actions_tensor = torch.as_tensor(actions, dtype=torch.int64, device=DEVICE).unsqueeze(-1)
+        rewards_tensor = torch.as_tensor(rewards, dtype=torch.float32, device=DEVICE).unsqueeze(-1)
+        dones_tensor = torch.as_tensor(dones, dtype=torch.float32, device=DEVICE).unsqueeze(-1)
+        new_obs_tensor = torch.as_tensor(new_obses, dtype=torch.float32, device=DEVICE)
 
-        # Compute Targets
-        with torch.no_grad():
-            if self.double:
-                targets_online_q_values = self(new_obses_t)
-                targets_online_best_q_indices = targets_online_q_values.argmax(dim=1, keepdim=True)
+        # Compute targets
+        target_q_values = target_net(new_obs_tensor)
+        max_target_q_values = target_q_values.max(dim=1, keepdim=True)[0]
+        targets = rewards_tensor + GAMMA * max_target_q_values * (1 - dones_tensor)
 
-                targets_target_q_values = target_net(new_obses_t)
-                targets_selected_q_values = torch.gather(input=targets_target_q_values, dim=1, index=targets_online_best_q_indices)
-
-                targets = rews_t + GAMMA * (1 - dones_t) * targets_selected_q_values
-            else:
-                target_q_values = target_net(new_obses_t)
-                max_target_q_values = target_q_values.max(dim=1, keepdim=True)[0]
-
-                targets = rews_t + GAMMA * (1 - dones_t) * max_target_q_values
-
-        # Compute Loss
-        q_values = self(obses_t)
-
-        action_q_values = torch.gather(input=q_values, dim=1, index=actions_t)
-
+        # Compute loss
+        q_values = self(obs_tensor)
+        action_q_values = torch.gather(input=q_values, dim=1, index=actions_tensor)
         loss = nn.functional.smooth_l1_loss(action_q_values, targets)
-
         return loss
+
+        # curr_Q = self.forward(obs_tensor).gather(1, actions_tensor)
+        # curr_Q = curr_Q.squeeze(1)
+        # next_Q = self.forward(new_obs_tensor)
+        # max_next_Q = torch.max(next_Q, 1, keepdim=True)[0]
+        # expected_Q = rewards_tensor + GAMMA * max_next_Q
+
+        # loss = nn.MSELoss(curr_Q, expected_Q)
+        # return loss
+    
 
     def save(self, save_path):
         params = {k: t.detach().cpu().numpy() for k, t in self.state_dict().items()}
@@ -155,7 +196,7 @@ class Network(nn.Module):
         self.load_state_dict(params)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print('device:', device)
+# print('device:', device)
 
 make_env = lambda: make_atari_deepmind(GAME_NAME, render=True)
 
@@ -163,7 +204,7 @@ vec_env = DummyVecEnv([make_env for _ in range(1)])
 
 env = BatchedPytorchFrameStack(vec_env, k=4)
 
-net = Network(env, device)
+net = DuelingDQN(env)
 net = net.to(device)
 
 net.load(LOAD_DIR)
@@ -182,8 +223,7 @@ for t in itertools.count():
         beginning_episode = False
 
     obs, rew, done, _ = env.step(action)
-    # env.render()
-
+    
     if done[0]:
         obs = env.reset()
         beginning_episode = True

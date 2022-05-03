@@ -18,6 +18,9 @@ import msgpack
 from msgpack_numpy import patch as msgpack_numpy_patch
 msgpack_numpy_patch()
 
+GAME_NAME = 'Breakout-v0'
+LOAD_DIR = '/home/twel/CS211_Assignment02/model/[Best model DoubleDQN] [4340000] Breakout-v0.pack'
+
 GAMMA=0.99
 BATCH_SIZE=32
 BUFFER_SIZE=int(1e6)
@@ -151,104 +154,35 @@ class Network(nn.Module):
 
         self.load_state_dict(params)
 
-if __name__ == '__main__':
-    device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# print('device:', device)
 
-    make_env = lambda: Monitor(make_atari_deepmind('BreakoutN-v0'), allow_early_resets=True)
+make_env = lambda: make_atari_deepmind(GAME_NAME, render=True)
 
-    vec_env = DummyVecEnv([make_env for _ in range(NUM_ENVS)])
-    # vec_env = SubprocVecEnv([make_env for _ in range(NUM_ENVS)])
+vec_env = DummyVecEnv([make_env for _ in range(1)])
 
-    env = BatchedPytorchFrameStack(vec_env, k=4)
+env = BatchedPytorchFrameStack(vec_env, k=4)
 
-    replay_buffer = deque(maxlen=BUFFER_SIZE)
-    epinfos_buffer = deque([], maxlen=100)
+net = Network(env, device)
+net = net.to(device)
 
-    episode_count = 0
+net.load(LOAD_DIR)
 
-    summary_writer = SummaryWriter(LOG_DIR)
+obs = env.reset()
+beginning_episode = True
+for t in itertools.count():
+    if isinstance(obs[0], PytorchLazyFrames):
+        act_obs = np.stack([o.get_frames() for o in obs])
+        action = net.act(act_obs, 0.0)
+    else:
+        action = net.act(obs, 0.0)
 
-    online_net = Network(env, device=device)
-    target_net = Network(env, device=device)
+    if beginning_episode:
+        action = [1]
+        beginning_episode = False
 
-    online_net.apply(init_weights)
-
-    online_net = online_net.to(device)
-    target_net = target_net.to(device)
-
-    target_net.load_state_dict(online_net.state_dict())
-
-    optimizer = torch.optim.Adam(online_net.parameters(), lr=LR)
-
-    # Initialize Replay Buffer
-    obses = env.reset()
-    for _ in range(MIN_REPLAY_SIZE):
-        actions = [env.action_space.sample() for _ in range(NUM_ENVS)]
-
-        new_obses, rews, dones, _ = env.step(actions)
-
-        for obs, action, rew, done, new_obs in zip(obses, actions, rews, dones, new_obses):
-            transition = (obs, action, rew, done, new_obs)
-            replay_buffer.append(transition)
-
-        obses = new_obses
-
-    # Main Training Loop
-    obses = env.reset()
-
-    for step in itertools.count():
-        epsilon = np.interp(step * NUM_ENVS, [0, EPSILON_DECAY], [EPSILON_START, EPSILON_END])
-
-        rnd_sample = random.random()
-
-        if isinstance(obses[0], PytorchLazyFrames):
-            act_obses = np.stack([o.get_frames() for o in obses])
-            actions = online_net.act(act_obses, epsilon)
-        else:
-            actions = online_net.act(obses, epsilon)
-
-        new_obses, rews, dones, infos = env.step(actions)
-
-        for obs, action, rew, done, new_obs, info in zip(obses, actions, rews, dones, new_obses, infos):
-            transition = (obs, action, rew, done, new_obs)
-            replay_buffer.append(transition)
-
-            if done:
-                epinfos_buffer.append(info['episode'])
-                episode_count += 1
-
-        obses = new_obses
-
-        # Start Gradient Step
-        transitions = random.sample(replay_buffer, BATCH_SIZE)
-        loss = online_net.compute_loss(transitions, target_net)
-
-        # Gradient Descent
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        # Update Target Network
-        if step % TARGET_UPDATE_FREQ == 0:
-            target_net.load_state_dict(online_net.state_dict())
-
-        # Logging
-        if step % LOG_INTERVAL == 0:
-            rew_mean = np.mean([e['r'] for e in epinfos_buffer]) or 0
-            len_mean = np.mean([e['l'] for e in epinfos_buffer]) or 0
-
-            print()
-            print('Step', step)
-            print('Avg Rew', rew_mean)
-            print('Avg Ep Len', len_mean)
-            print('Episodes', episode_count)
-
-            summary_writer.add_scalar('AvgRew', rew_mean, global_step=step)
-            summary_writer.add_scalar('AvgEpLen', len_mean, global_step=step)
-            summary_writer.add_scalar('Episodes', episode_count, global_step=step)
-
-        # Save
-        if step % SAVE_INTERVAL == 0 and step !=0:
-            print('Saving...')
-            online_net.save(SAVE_PATH)
-
+    obs, rew, done, _ = env.step(action)
+    
+    if done[0]:
+        obs = env.reset()
+        beginning_episode = True
