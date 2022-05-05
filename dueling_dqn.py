@@ -28,13 +28,13 @@ EPSILON_DECAY=int(1e6)
 NUM_ENVS = 4
 TARGET_UPDATE_FREQ=10000 // NUM_ENVS
 LR = 5e-5
-SAVE_PATH = './breakoutv0_model_double.pack'.format(LR)
 SAVE_INTERVAL = 10000
-LOG_DIR = './logs/breakoutv0_double' + str(LR)
 LOG_INTERVAL = 1000
-device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
-DEVICE = device
 
+LOG_DIR = './logs/breakoutv0_double' + str(LR)
+device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
+SAVE_PATH = './breakoutv0_model_double.pack'.format(LR)
+DEVICE = device
 
 def init_weights(m):
     if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
