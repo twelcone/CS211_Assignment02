@@ -25,11 +25,11 @@ MIN_REPLAY_SIZE=50000
 EPSILON_START=1.0
 EPSILON_END=0.1
 EPSILON_DECAY=int(1e6)
-NUM_ENVS = 4
+NUM_ENVS = 4    #create 4 env at start for training
 TARGET_UPDATE_FREQ=10000 // NUM_ENVS
-LR = 5e-5
-SAVE_INTERVAL = 10000
-LOG_INTERVAL = 1000
+LR = 5e-5   #learning-rate
+SAVE_INTERVAL = 10000   #save model after each 10000 steps
+LOG_INTERVAL = 1000     #writing logs after each 1000 steps  
 
 LOG_DIR = './logs/breakoutv0_double' + str(LR)
 device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
