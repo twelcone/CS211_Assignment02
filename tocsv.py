@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
-LOG_DIR = 'logs'
+LOG_DIR = 'logs_Montezuma'
 SAVE_DIR = 'csv'
 folders = os.listdir(LOG_DIR)
 for folder in folders:

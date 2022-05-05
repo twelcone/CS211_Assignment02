@@ -18,8 +18,8 @@ import msgpack
 from msgpack_numpy import patch as msgpack_numpy_patch
 msgpack_numpy_patch()
 
-GAME_NAME = 'MontezumaRevenge-v0'
-LOAD_DIR = '/home/twel/CS211_Assignment02/model/[Best model DuelingDQN] [4330000] MontezumaRevenge-v0.pack'
+GAME_NAME = 'Breakout-v0'
+LOAD_DIR = '/home/twel/CS211_Assignment02/model/[Best model DuelingDQN] [4510000] Breakout-v0.pack'
 
 GAMMA=0.99
 BATCH_SIZE=32

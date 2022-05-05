@@ -2,7 +2,7 @@ from __init__ import *
 msgpack_numpy_patch()
 
 GAME_NAME = 'MontezumaRevenge-v0'
-LOAD_DIR = '/home/twel/CS211_Assignment02/model/[Best model DuelingDQN] [4330000] MontezumaRevenge-v0.pack'
+LOAD_DIR = '/home/twel/CS211_Assignment02/model/[Best model DQN] [5670000] MontezumaRevenge-v0.pack'
 
 def nature_cnn(observation_space, depths=(32, 64, 64), final_layer=512):
     n_input_channels = observation_space.shape[0]
